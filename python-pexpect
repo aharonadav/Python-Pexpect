@@ -1,0 +1,59 @@
+#!/usr/bin/python
+import os,platform
+osversion = platform.dist()
+
+def pip():
+    os.system('curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"')
+    os.system("python get-pip.py && pip install pexpect")
+
+def ex():
+    import pexpect
+    option_list = ["password: ", pexpect.EOF]
+
+    command1 = pexpect.spawn("domainjoin-cli join <Domain Name> <user.name>")
+    command1.timeout = 100
+    options = command1.expect(option_list)
+
+    if options == 0:
+        command1.sendline('')
+        if "12.04" in osversion:
+            os.system('lwconfig AssumeDefaultDomain true')
+            os.system('lwconfig UserDomainPrefix <DOMAIN>')
+            os.system('lwconfig loginshelltemplate /bin/bash')
+            os.system('lwconfig RequireMembershipOf "<DOMAIN\\<group Name>"')
+            os.system('echo "%linux_group    ALL=(ALL:ALL) ALL">>/etc/sudoers')
+        elif "14.04" or "centos" in osversion:
+            os.system('cd /opt/likewise/bin && ./lwconfig UserDomainPrefix <DOMAIN>')
+            os.system('cd /opt/likewise/bin && ./lwconfig RequireMembershipOf "<DOMAIN>\\linux_group"')
+            os.system('cd /opt/likewise/bin && ./lwconfig AssumeDefaultDomain true')
+            os.system('cd /opt/likewise/bin && ./lwconfig loginshelltemplate /bin/bash')
+
+            os.system('echo "%<group name>    ALL=(ALL:ALL) ALL">>/etc/sudoers')
+
+        else:
+            print "Version not found"
+            exit()
+
+    command1.expect(pexpect.EOF)
+    print(command1.before)
+    print "session closed."
+
+
+if "centos" in osversion:
+    print osversion
+    pip()
+    os.system('wget http://download.beyondtrust.com/PBISO/8.0.0.2016/linux.rpm.x64/pbis-open-8.0.0.2016.linux.x86_64.rpm.sh')
+    os.system('chmod +x pbis-open-8.0.0.2016.linux.x86_64.rpm.sh && yes |./pbis-open-8.0.0.2016.linux.x86_64.rpm.sh')
+    ex()
+
+else:
+    if "12.04" in osversion:
+        print "Ubuntu 12.04"
+        pip()
+        os.system("apt-get install likewise-open")
+        ex()
+    else:
+        pip()
+        os.system('wget http://download.beyondtrust.com/PBISO/8.0.0.2016/linux.deb.x64/pbis-open-8.0.0.2016.linux.x86_64.deb.sh')
+        os.system('chmod +x pbis-open-8.0.0.2016.linux.x86_64.deb.sh && yes |./pbis-open-8.0.0.2016.linux.x86_64.deb.sh')
+        ex()
